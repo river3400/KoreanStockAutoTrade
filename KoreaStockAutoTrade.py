@@ -3,6 +3,7 @@ import json
 import datetime
 import time
 import yaml
+from pytz import timezone
 
 dont_sell = ["005930","035420"]
 
@@ -252,16 +253,17 @@ try:
     buy_percent = 0.1 # 종목당 매수 금액 비율
     buy_amount = total_cash * buy_percent  # 종목별 주문 금액 계산
     soldout = False
+    korea_timezone = timezone('Asia/Seoul')
 
     send_message("===국내 주식 자동매매 프로그램을 시작합니다===")
     while True:
         k=0.5
-        t_now = datetime.datetime.now()
+        t_now = datetime.datetime.now(korea_timezone)
         t_9 = t_now.replace(hour=9, minute=0, second=0, microsecond=0)
         t_start = t_now.replace(hour=9, minute=5, second=0, microsecond=0)
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
-        today = datetime.datetime.today().weekday()
+        today = t_now.weekday()
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             break
