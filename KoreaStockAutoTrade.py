@@ -34,6 +34,11 @@ def get_access_token():
     URL = f"{URL_BASE}/{PATH}"
     res = requests.post(URL, headers=headers, data=json.dumps(body))
     ACCESS_TOKEN = res.json()["access_token"]
+
+
+
+
+
     return ACCESS_TOKEN
     
 def hashkey(datas):
@@ -181,7 +186,7 @@ def get_balance():
     send_message(f"주문 가능 현금 잔고: {cash}원")
     return int(cash)
 
-def buy(code="005930", qty="1"):
+def buy(code="005930", qty="1", unpr = '0'):
     """주식 시장가 매수"""  
     PATH = "uapi/domestic-stock/v1/trading/order-cash"
     URL = f"{URL_BASE}/{PATH}"
@@ -189,9 +194,9 @@ def buy(code="005930", qty="1"):
         "CANO": CANO,
         "ACNT_PRDT_CD": ACNT_PRDT_CD,
         "PDNO": code,
-        "ORD_DVSN": "01",
+        "ORD_DVSN": "00",
         "ORD_QTY": str(int(qty)),
-        "ORD_UNPR": "0",
+        "ORD_UNPR": unpr
     }
     headers = {"Content-Type":"application/json", 
         "authorization":f"Bearer {ACCESS_TOKEN}",
@@ -245,6 +250,7 @@ try:
 
     symbol_list = ['286750', '340360', '065650', '177350', '090150', '092870', '094970', '270520', '043220', '003580', '001210', '003160', '067630', '104200', '059210', '222080', '321820', '064800', '073640', '192410', '013310', '270660', '214370', '083450', '114190', '035290', '317330', '019570', '235980', '053030', '033170', '298060', '109610', '036810', '348370', '198080', '083310', '309930', '018000', '033100', '307930', '041590', '114810', '042660', '009470', '212560', '083500', '240810', '138360', '145720', '452260', '396270', '160980', '196170', '014940', '131290', '161580', '077500', '151910', '255220', '330860', '060900', '900340', '234920', '080530', '256840', '006400', '121600', '261200', '383930', '058470', '006920', '072950', '068760', '056700', '033540', '032800', '241820', '042520'] # 매수 희망 종목 리스트
     bought_list = [] # 매수 완료된 종목 리스트
+    buytry_list = []
     total_cash = get_balance() # 보유 현금 조회
     stock_dict = get_stock_balance() # 보유 주식 조회
     for sym in stock_dict.keys():
@@ -264,11 +270,23 @@ try:
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
         today = t_now.weekday()
+        for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
+            rate = float(stock_dict.get(sym)[1])
+            if sym in dont_sell:
+                continue
+        
+            if rate > 2.5 or rate < -2.5:
+
+                qty = stock_dict.get(sym, "0")[0]
+                sell(sym, qty)
+                print("%s %s %.2f%%" % (stock_dict.get(sym)[2], "익절" if rate>0 else "손절" ,float(stock_dict.get(sym)[1])))
+                bought_list.remove(sym)
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             break
         if t_9 < t_now < t_start and soldout == False: # 잔여 수량 매도
             for sym, qty in stock_dict.items():
+                qty = qty[0]
                 sell(sym, qty)
             soldout = True
             bought_list = []
@@ -276,31 +294,33 @@ try:
         if t_start < t_now < t_sell :  # AM 09:05 ~ PM 03:15 : 매수
             for sym in symbol_list:
                 if len(bought_list) < target_buy_count:
-                    if sym in bought_list:
+                    if sym in bought_list or sym in buytry_list:
                         continue
                     target_price = get_target_price(sym, k)
                     current_price = get_current_price(sym)
                     ma5_price = get_movingaverage(sym,5)
                     ma10_price = get_movingaverage(sym,10)
-                    if target_price < current_price and ma5_price < current_price and ma10_price < current_price:
+                    if target_price*0.995 < current_price and ma5_price < current_price and ma10_price < current_price:
                         buy_qty = 0  # 매수할 수량 초기화
-                        buy_qty = int(buy_amount // current_price)
+                        buy_qty = int(buy_amount // target_price)
                         if buy_qty > 0:
-                            send_message(f"{sym} 목표가 달성(현{target_price} 목표{current_price} 5일{ma5_price} 10일{ma10_price}) 매수를 시도합니다.")
-                            result = buy(sym, buy_qty)
+                            send_message(f"{sym} 목표가 근접(현{current_price} 목표{target_price} 5일{ma5_price} 10일{ma10_price}) 매수를 시도합니다.")
+                            result = buy(sym, buy_qty, target_price)
                             if result:
                                 soldout = False
                                 bought_list.append(sym)
-                                get_stock_balance()
+                                buytry_list.append(sym)
+                                stock_dict = get_stock_balance()
                     time.sleep(1)
             time.sleep(1)
             if t_now.minute == 30 and t_now.second <= 5: 
-                get_stock_balance()
+                stock_dict = get_stock_balance()
                 time.sleep(5)
         if t_sell < t_now < t_exit:  # PM 03:15 ~ PM 03:20 : 일괄 매도
             if soldout == False:
                 stock_dict = get_stock_balance()
                 for sym, qty in stock_dict.items():
+                    qty = qty[0]
                     sell(sym, qty)
                 soldout = True
                 bought_list = []
