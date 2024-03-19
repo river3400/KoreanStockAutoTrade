@@ -149,7 +149,7 @@ def get_stock_balance():
     send_message(f"====주식 보유잔고====")
     for stock in stock_list:
         if int(stock['hldg_qty']) > 0:
-            stock_dict[stock['pdno']] = stock['hldg_qty']
+            stock_dict[stock['pdno']] = [stock['hldg_qty'], stock['evlu_pfls_rt'], stock['prdt_name']]
             send_message(f"{stock['prdt_name']}({stock['pdno']}): {stock['hldg_qty']}주")
             time.sleep(0.1)
     send_message(f"주식 평가 금액: {evaluation[0]['scts_evlu_amt']}원")
@@ -303,7 +303,6 @@ try:
                     current_price = get_current_price(sym)
                     ma5_price = get_movingaverage(sym,5)
                     ma10_price = get_movingaverage(sym,10)
-                    print(sym)
                     if target_price*0.997 < current_price and ma5_price < current_price and ma10_price < current_price:
                         buy_qty = 0  # 매수할 수량 초기화
                         buy_qty = int(buy_amount // target_price)
@@ -323,9 +322,6 @@ try:
                                 soldout = False
                                 bought_list.append(sym)
                                 buytry_list.append(sym)
-                                print(stock_dict)
-                                print(bought_list)
-                                print(buytry_list)
                                 stock_dict = get_stock_balance()
                     time.sleep(1)
             time.sleep(1)
