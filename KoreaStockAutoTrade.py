@@ -270,17 +270,20 @@ try:
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
         today = t_now.weekday()
+        print("a")
         for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
-            rate = float(stock_dict.get(sym)[1])
+            stock_list = stock_dict.get(sym, ["0","0"])
+            rate = float(stock_list[1])
             if sym in dont_sell:
                 continue
         
             if rate > 2.5 or rate < -2.5:
 
-                qty = stock_dict.get(sym, "0")[0]
+                qty = stock_list[0]
                 sell(sym, qty)
-                print("%s %s %.2f%%" % (stock_dict.get(sym)[2], "익절" if rate>0 else "손절" ,float(stock_dict.get(sym)[1])))
+                print("%s %s %.2f%%" % (stock_list[2], "익절" if rate>0 else "손절" ,rate))
                 bought_list.remove(sym)
+        print("b")
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             break
@@ -300,16 +303,29 @@ try:
                     current_price = get_current_price(sym)
                     ma5_price = get_movingaverage(sym,5)
                     ma10_price = get_movingaverage(sym,10)
-                    if target_price*0.995 < current_price and ma5_price < current_price and ma10_price < current_price:
+                    print(sym)
+                    if target_price*0.997 < current_price and ma5_price < current_price and ma10_price < current_price:
                         buy_qty = 0  # 매수할 수량 초기화
                         buy_qty = int(buy_amount // target_price)
                         if buy_qty > 0:
                             send_message(f"{sym} 목표가 근접(현{current_price} 목표{target_price} 5일{ma5_price} 10일{ma10_price}) 매수를 시도합니다.")
-                            result = buy(sym, buy_qty, target_price)
+                            if current_price % 50 == 0:
+                                buy_price = int(target_price//50+1)*50
+                            elif current_price % 10 == 0:
+                                buy_price = int(target_price//10+1)*10
+                            elif current_price % 5 == 0:
+                                buy_price = int(target_price//5+1)*10
+                            else:
+                                buy_price = int(target_price)
+                            result = buy(sym, buy_qty, str(buy_price))
+                            print(result)
                             if result:
                                 soldout = False
                                 bought_list.append(sym)
                                 buytry_list.append(sym)
+                                print(stock_dict)
+                                print(bought_list)
+                                print(buytry_list)
                                 stock_dict = get_stock_balance()
                     time.sleep(1)
             time.sleep(1)
