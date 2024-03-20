@@ -70,7 +70,7 @@ def get_current_price(code="005930"):
     res = requests.get(URL, headers=headers, params=params)
     return int(res.json()['output']['stck_prpr'])
 
-def get_target_price(code="005930", k=0.5):
+def get_price_lst(code="005930", k=0.5):
     """변동성 돌파 전략으로 매수 목표가 조회"""
     PATH = "uapi/domestic-stock/v1/quotations/inquire-daily-price"
     URL = f"{URL_BASE}/{PATH}"
@@ -89,36 +89,55 @@ def get_target_price(code="005930", k=0.5):
     stck_oprc = int(res.json()['output'][0]['stck_oprc']) #오늘 시가
     stck_hgpr = int(res.json()['output'][1]['stck_hgpr']) #전일 고가
     stck_lwpr = int(res.json()['output'][1]['stck_lwpr']) #전일 저가
+    hgpr_list = [item['stck_hgpr'] for item in res.json()['output']]
+    last_date = res.json()['output'][0]['stck_bsop_date']
     target_price = stck_oprc + (stck_hgpr - stck_lwpr) * k
-    return target_price
+    return [target_price, hgpr_list, last_date]
 
-def get_movingaverage(code='005930', day='1'):
+def get_movingaverage(price_lst = ['0',['0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0'], '20000001'], day='1'):
     """이동평균선 가격 조회"""
     time_now = datetime.datetime.now()
     str_today = time_now.strftime('%Y%m%d')
-    PATH = "uapi/domestic-stock/v1/quotations/inquire-daily-price"
-    URL = f"{URL_BASE}/{PATH}"
-    headers = {"Content-Type":"application/json", 
-        "authorization": f"Bearer {ACCESS_TOKEN}",
-        "appKey":APP_KEY,
-        "appSecret":APP_SECRET,
-        "tr_id":"FHKST01010400"}
-    params = {
-    "fid_cond_mrkt_div_code":"J",
-    "fid_input_iscd":code,
-    "FID_INPUT_DATE_2":str_today,
-    "FID_PERIOD_DIV_CODE":"D",
-    "FID_ORG_ADJ_PRC":"0"
-    }
-    res = requests.get(URL, headers=headers, params=params)
-    data = res.json()
-    if res.json()['output'][0]['stck_bsop_date'] == str_today:
-        data['output'].pop(0)
-    movingaverage = [item['stck_oprc'] for item in data['output'][0:day]]
+    if price_lst[2] == str_today:
+        price_lst[1].pop(0)
+    movingaverage = price_lst[1][0:day]
     average = [int(num) for num in movingaverage]
     return sum(average)/len(average)
 
 def get_stock_balance():
+    """주식 잔고조회"""
+    PATH = "uapi/domestic-stock/v1/trading/inquire-balance"
+    URL = f"{URL_BASE}/{PATH}"
+    headers = {"Content-Type":"application/json", 
+        "authorization":f"Bearer {ACCESS_TOKEN}",
+        "appKey":APP_KEY,
+        "appSecret":APP_SECRET,
+        "tr_id":"TTTC8434R",
+        "custtype":"P",
+    }
+    params = {
+        "CANO": CANO,
+        "ACNT_PRDT_CD": ACNT_PRDT_CD,
+        "AFHR_FLPR_YN": "N",
+        "OFL_YN": "",
+        "INQR_DVSN": "02",
+        "UNPR_DVSN": "01",
+        "FUND_STTL_ICLD_YN": "N",
+        "FNCG_AMT_AUTO_RDPT_YN": "N",
+        "PRCS_DVSN": "01",
+        "CTX_AREA_FK100": "",
+        "CTX_AREA_NK100": ""
+    }
+    res = requests.get(URL, headers=headers, params=params)
+    stock_list = res.json()['output1']
+    evaluation = res.json()['output2']
+    stock_dict = {}
+    for stock in stock_list:
+        if int(stock['hldg_qty']) > 0:
+            stock_dict[stock['pdno']] = [stock['hldg_qty'], stock['evlu_pfls_rt'], stock['prdt_name']]
+    return stock_dict
+
+def get_stock_balance_msg():
     """주식 잔고조회"""
     PATH = "uapi/domestic-stock/v1/trading/inquire-balance"
     URL = f"{URL_BASE}/{PATH}"
@@ -248,11 +267,11 @@ def sell(code="005930", qty="1"):
 try:
     ACCESS_TOKEN = get_access_token()
 
-    symbol_list = ['115390', '340360', '065650', '177350', '060230', '090150', '073570', '092870', '066980', '123570', '094970', '270520', '246710', '043220', '003580', '001210', '003160', '104200', '059210', '009620', '222080', '237690', '321820', '112040', '013310', '270660', '101730', '214370', '083450', '114190', '035290', '219550', '019570', '235980', '053030', '033170', '348370', '198080', '083310', '309930', '018000', '033100', '307930', '041590', '114810', '042660', '009470', '103590', '399720', '212560', '066910', '083500', '240810', '138360', '000680', '009310', '010660', '000250', '160980', '196170', '014940', '062970', '161580', '077500', '151910', '255220', '330860', '060900', '200470', '900340', '234920', '080530', '365270', '219130', '256840', '006400', '121600', '261200', '030350', '383930', '058470', '305090', '006920', '072950', '304100', '056700', '257720', '032800', '241820']
+    symbol_list = ['286750', '340360', '065650', '177350', '090150', '092870', '094970', '270520', '043220', '003580', '001210', '003160', '067630', '104200', '059210', '222080', '321820', '064800', '073640', '192410', '013310', '270660', '214370', '083450', '114190', '035290', '317330', '019570', '235980', '053030', '033170', '298060', '109610', '036810', '348370', '198080', '083310', '309930', '018000', '033100', '307930', '041590', '114810', '042660', '009470', '212560', '083500', '240810', '138360', '145720', '452260', '396270', '160980', '196170', '014940', '131290', '161580', '077500', '151910', '255220', '330860', '060900', '900340', '234920', '080530', '256840', '006400', '121600', '261200', '383930', '058470', '006920', '072950', '068760', '056700', '033540', '032800', '241820', '042520'] # 매수 희망 종목 리스트
     bought_list = [] # 매수 완료된 종목 리스트
     buytry_list = []
     total_cash = get_balance() # 보유 현금 조회
-    stock_dict = get_stock_balance() # 보유 주식 조회
+    stock_dict = get_stock_balance_msg() # 보유 주식 조회
     for sym in stock_dict.keys():
         bought_list.append(sym)
     target_buy_count = 10 # 매수할 종목 수
@@ -270,8 +289,9 @@ try:
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
         today = t_now.weekday()
-        print("a")
+        send_message('수익률계산')
         for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
+            stock_dict = get_stock_balance()
             stock_list = stock_dict.get(sym, ["0","0"])
             rate = float(stock_list[1])
             if sym in dont_sell:
@@ -281,9 +301,8 @@ try:
 
                 qty = stock_list[0]
                 sell(sym, qty)
-                print("%s %s %.2f%%" % (stock_list[2], "익절" if rate>0 else "손절" ,rate))
+                send_message("%s %s %.2f%%" % (stock_list[2], "익절" if rate>0 else "손절" ,rate))
                 bought_list.remove(sym)
-        print("b")
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             break
@@ -293,16 +312,17 @@ try:
                 sell(sym, qty)
             soldout = True
             bought_list = []
-            stock_dict = get_stock_balance()
+            stock_dict = get_stock_balance_msg()
         if t_start < t_now < t_sell :  # AM 09:05 ~ PM 03:15 : 매수
             for sym in symbol_list:
                 if len(bought_list) < target_buy_count:
                     if sym in bought_list or sym in buytry_list:
                         continue
-                    target_price = get_target_price(sym, k)
                     current_price = get_current_price(sym)
-                    ma5_price = get_movingaverage(sym,5)
-                    ma10_price = get_movingaverage(sym,10)
+                    price_lst = get_price_lst(sym, k)
+                    target_price = price_lst[0]
+                    ma5_price = float(get_movingaverage(price_lst,5))
+                    ma10_price = float(get_movingaverage(price_lst,10))
                     if target_price*0.997 < current_price and ma5_price < current_price and ma10_price < current_price:
                         buy_qty = 0  # 매수할 수량 초기화
                         buy_qty = int(buy_amount // target_price)
@@ -317,20 +337,20 @@ try:
                             else:
                                 buy_price = int(target_price)
                             result = buy(sym, buy_qty, str(buy_price))
-                            print(result)
                             if result:
                                 soldout = False
                                 bought_list.append(sym)
                                 buytry_list.append(sym)
-                                stock_dict = get_stock_balance()
+                                stock_dict = get_stock_balance_msg()
+                            
                     time.sleep(1)
             time.sleep(1)
             if t_now.minute == 30 and t_now.second <= 5: 
-                stock_dict = get_stock_balance()
+                stock_dict = get_stock_balance_msg()
                 time.sleep(5)
         if t_sell < t_now < t_exit:  # PM 03:15 ~ PM 03:20 : 일괄 매도
             if soldout == False:
-                stock_dict = get_stock_balance()
+                stock_dict = get_stock_balance_msg()
                 for sym, qty in stock_dict.items():
                     qty = qty[0]
                     sell(sym, qty)
