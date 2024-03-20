@@ -228,7 +228,7 @@ def buy(code="005930", qty="1", unpr = '0'):
     res = requests.post(URL, headers=headers, data=json.dumps(data))
     if res.json()['rt_cd'] == '0':
         send_message(f"[매수 성공]{str(res.json())}")
-        return True
+        return res.json()['output']['ODNO']
     else:
         send_message(f"[매수 실패]{str(res.json())}")
         return False
@@ -262,6 +262,37 @@ def sell(code="005930", qty="1"):
     else:
         send_message(f"[매도 실패]{str(res.json())}")
         return False
+    
+def cancel(code="005930"):
+    """주문취소주문"""
+    PATH = "uapi/domestic-stock/v1/trading/order-cash"
+    URL = f"{URL_BASE}/{PATH}"
+    data = {
+        "CANO": CANO,
+        "ACNT_PRDT_CD": ACNT_PRDT_CD,
+        "KRX_FWDG_ORD_ORGNO": "",
+        "ORGN_ODNO": code,
+        "ORD_DVSN": "00",
+        "RVSE_CNCL_DVSN_CD": "02",
+        "ORD_QTY": "0",
+        "ORD_UNPR": "0",
+        "QTY_ALL_ORD_YN": "Y"
+    }
+    headers = {"Content-Type":"application/json", 
+        "authorization":f"Bearer {ACCESS_TOKEN}",
+        "appKey":APP_KEY,
+        "appSecret":APP_SECRET,
+        "tr_id":"TTTC0803U",
+        "custtype":"P",
+        "hashkey" : hashkey(data)
+    }
+    res = requests.post(URL, headers=headers, data=json.dumps(data))
+    if res.json()['rt_cd'] == '0':
+        send_message(f"[취소 성공]{str(res.json())}")
+        return True
+    else:
+        send_message(f"[취소 실패]{str(res.json())}")
+        return False
 
 # 자동매매 시작
 try:
@@ -270,6 +301,7 @@ try:
     symbol_list = ['286750', '340360', '065650', '177350', '090150', '092870', '094970', '270520', '043220', '003580', '001210', '003160', '067630', '104200', '059210', '222080', '321820', '064800', '073640', '192410', '013310', '270660', '214370', '083450', '114190', '035290', '317330', '019570', '235980', '053030', '033170', '298060', '109610', '036810', '348370', '198080', '083310', '309930', '018000', '033100', '307930', '041590', '114810', '042660', '009470', '212560', '083500', '240810', '138360', '145720', '452260', '396270', '160980', '196170', '014940', '131290', '161580', '077500', '151910', '255220', '330860', '060900', '900340', '234920', '080530', '256840', '006400', '121600', '261200', '383930', '058470', '006920', '072950', '068760', '056700', '033540', '032800', '241820', '042520'] # 매수 희망 종목 리스트
     bought_list = [] # 매수 완료된 종목 리스트
     buytry_list = []
+    order_log = {}
     total_cash = get_balance() # 보유 현금 조회
     stock_dict = get_stock_balance_msg() # 보유 주식 조회
     for sym in stock_dict.keys():
@@ -289,7 +321,6 @@ try:
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
         today = t_now.weekday()
-        send_message('수익률계산')
         for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
             stock_dict = get_stock_balance()
             stock_list = stock_dict.get(sym, ["0","0"])
@@ -315,6 +346,14 @@ try:
             stock_dict = get_stock_balance_msg()
         if t_start < t_now < t_sell :  # AM 09:05 ~ PM 03:15 : 매수
             for sym in symbol_list:
+                for item in order_log:
+                    stc = order_log[item]
+                    if stc[0] < t_now:
+                        result = cancel(stc[1])
+                        if result:
+                            bought_list.remove(stc[2])
+                            del order_log[item]
+
                 if len(bought_list) < target_buy_count:
                     if sym in bought_list or sym in buytry_list:
                         continue
@@ -342,6 +381,8 @@ try:
                                 bought_list.append(sym)
                                 buytry_list.append(sym)
                                 stock_dict = get_stock_balance_msg()
+                                t_buy = datetime.datetime.now(korea_timezone)
+                                order_log[sym] = [t_buy + datetime.timedelta(minute=10), result, sym]
                             
                     time.sleep(1)
             time.sleep(1)
