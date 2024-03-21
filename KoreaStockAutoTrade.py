@@ -26,6 +26,7 @@ def send_message(msg):
 
 def get_access_token():
     """토큰 발급"""
+    
     headers = {"content-type":"application/json"}
     body = {"grant_type":"client_credentials",
     "appkey":APP_KEY, 
@@ -34,10 +35,6 @@ def get_access_token():
     URL = f"{URL_BASE}/{PATH}"
     res = requests.post(URL, headers=headers, data=json.dumps(body))
     ACCESS_TOKEN = res.json()["access_token"]
-
-
-
-
 
     return ACCESS_TOKEN
     
@@ -323,6 +320,13 @@ try:
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
         today = t_now.weekday()
+        for item in order_log:
+            stc = order_log[item]
+            if stc[0] < t_now:
+                result = cancel(stc[1])
+                if result:
+                    bought_list.remove(item)
+                    del order_log[item]
         for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
             stock_dict = get_stock_balance()
             stock_list = stock_dict.get(sym, ["0","0"])
@@ -336,7 +340,6 @@ try:
                 sell(sym, qty)
                 send_message("%s %s %.2f%%" % (stock_list[2], "익절" if rate>0 else "손절" ,rate))
                 bought_list.remove(sym)
-        
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             break
