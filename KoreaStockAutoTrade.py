@@ -263,9 +263,9 @@ def sell(code="005930", qty="1"):
         send_message(f"[매도 실패]{str(res.json())}")
         return False
     
-def cancel(code="005930"):
+def cancel(code="0000001727"):
     """주문취소주문"""
-    PATH = "uapi/domestic-stock/v1/trading/order-cash"
+    PATH = "uapi/domestic-stock/v1/trading/order-rvsecncl"
     URL = f"{URL_BASE}/{PATH}"
     data = {
         "CANO": CANO,
@@ -278,17 +278,19 @@ def cancel(code="005930"):
         "ORD_UNPR": "0",
         "QTY_ALL_ORD_YN": "Y"
     }
-    headers = {"Content-Type":"application/json", 
+    headers = {"Content-Type":"application/json",
         "authorization":f"Bearer {ACCESS_TOKEN}",
         "appKey":APP_KEY,
         "appSecret":APP_SECRET,
         "tr_id":"TTTC0803U",
         "custtype":"P",
-        "hashkey" : hashkey(data)
     }
     res = requests.post(URL, headers=headers, data=json.dumps(data))
     if res.json()['rt_cd'] == '0':
         send_message(f"[취소 성공]{str(res.json())}")
+        return True
+    elif res.json()['rt_cd'] == '7':
+        send_message(f"[취소 실패]{str(res.json())}")
         return True
     else:
         send_message(f"[취소 실패]{str(res.json())}")
@@ -351,7 +353,7 @@ try:
                     if stc[0] < t_now:
                         result = cancel(stc[1])
                         if result:
-                            bought_list.remove(stc[2])
+                            bought_list.remove(item)
                             del order_log[item]
 
                 if len(bought_list) < target_buy_count:
@@ -367,14 +369,16 @@ try:
                         buy_qty = int(buy_amount // target_price)
                         if buy_qty > 0:
                             send_message(f"{sym} 목표가 근접(현{current_price} 목표{target_price} 5일{ma5_price} 10일{ma10_price}) 매수를 시도합니다.")
-                            if current_price % 50 == 0:
-                                buy_price = int(target_price//50+1)*50
-                            elif current_price % 10 == 0:
-                                buy_price = int(target_price//10+1)*10
-                            elif current_price % 5 == 0:
-                                buy_price = int(target_price//5+1)*10
-                            else:
+                            if current_price < 2000:
                                 buy_price = int(target_price)
+                            elif current_price < 5000:
+                                buy_price = int(target_price//5+1)*5
+                            elif current_price < 20000:
+                                buy_price = int(target_price//10+1)*10
+                            elif current_price < 50000:
+                                buy_price = int(target_price//50+1)*50
+                            else:
+                                buy_price = int(target_price//100+1)*100
                             result = buy(sym, buy_qty, str(buy_price))
                             if result:
                                 soldout = False
@@ -382,7 +386,8 @@ try:
                                 buytry_list.append(sym)
                                 stock_dict = get_stock_balance_msg()
                                 t_buy = datetime.datetime.now(korea_timezone)
-                                order_log[sym] = [t_buy + datetime.timedelta(minute=10), result, sym]
+                                order_log[sym] = [t_buy + datetime.timedelta(minutes=10), result, sym]
+                                print(order_log)
                             
                     time.sleep(1)
             time.sleep(1)
