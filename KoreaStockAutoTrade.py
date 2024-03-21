@@ -336,6 +336,7 @@ try:
                 sell(sym, qty)
                 send_message("%s %s %.2f%%" % (stock_list[2], "익절" if rate>0 else "손절" ,rate))
                 bought_list.remove(sym)
+        
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             break
@@ -348,14 +349,6 @@ try:
             stock_dict = get_stock_balance_msg()
         if t_start < t_now < t_sell :  # AM 09:05 ~ PM 03:15 : 매수
             for sym in symbol_list:
-                for item in order_log:
-                    stc = order_log[item]
-                    if stc[0] < t_now:
-                        result = cancel(stc[1])
-                        if result:
-                            bought_list.remove(item)
-                            del order_log[item]
-
                 if len(bought_list) < target_buy_count:
                     if sym in bought_list or sym in buytry_list:
                         continue
