@@ -353,13 +353,12 @@ try:
     buy_percent = 0.1 # 종목당 매수 금액 비율
     buy_amount = total_cash * buy_percent  # 종목별 주문 금액 계산
     soldout = False
-    korea_timezone = timezone('Asia/Seoul')
     last_executed = None
 
     send_message("===국내 주식 자동매매 프로그램을 시작합니다===")
     while True:
         k=0.5
-        t_now = datetime.datetime.now(korea_timezone)
+        t_now = datetime.datetime.now()
         t_9 = t_now.replace(hour=9, minute=0, second=0, microsecond=0)
         t_start = t_now.replace(hour=9, minute=5, second=0, microsecond=0)
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
@@ -396,7 +395,7 @@ try:
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             time.sleep(60)
-            pass
+            continue
         if t_9 < t_now < t_start and soldout == False: # 잔여 수량 매도
             for sym, qty in stock_dict.items():
                 qty = qty[0]
@@ -422,7 +421,7 @@ try:
                 bought_list = []
                 time.sleep(1)
         if t_exit < t_now:  # PM 03:20 ~ :프로그램 종료
-            pass
+            continue
 except Exception as e:
     send_message(f"[오류 발생]{e}")
     time.sleep(1)
