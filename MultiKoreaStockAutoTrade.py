@@ -3,7 +3,6 @@ import json
 import datetime
 import time
 import yaml
-from pytz import timezone
 import concurrent.futures
 import os
 import sys
@@ -230,7 +229,7 @@ def buy(code="005930", qty="1", unpr = '0'):
         return res.json()['output']['ODNO']
     else:
         send_message(f"[매수 실패]{str(res.json())}")
-        return False
+        return True
 
 def sell(code="005930", qty="1"):
     """주식 시장가 매도"""
@@ -321,7 +320,7 @@ def check_buy_condition(sym, buy_amount, bought_list, buytry_list):
             if result:
                 bought_list.append(sym)
                 buytry_list.append(sym)
-                t_buy = datetime.datetime.now(korea_timezone)
+                t_buy = datetime.datetime.now()
                 order_log[sym] = [t_buy + datetime.timedelta(minutes=10), result, sym]
 
 def parallel_check_buy_conditions(symbol_list, buy_amount, bought_list, buytry_list):
@@ -335,6 +334,8 @@ def parallel_check_buy_conditions(symbol_list, buy_amount, bought_list, buytry_l
 
 def restart_program():
     python = sys.executable
+    print(python)
+    print(*sys.argv)
     os.execl(python, python, *sys.argv)
 
 # 자동매매 시작
@@ -363,12 +364,13 @@ try:
         t_start = t_now.replace(hour=9, minute=5, second=0, microsecond=0)
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
-        t_restart = t_now.replace(hour=8, minute=0, second=0, microsecond=0)
-        t_start = t_now.replace(hour=8, minute=10, second=0, microsecond=0)
+        t_restart = t_now.replace(hour=0, minute=1, second=0, microsecond=0)
+        t_start = t_now.replace(hour=0, minute=2, second=0, microsecond=0)
         today = t_now.weekday()
         to_delete = []
         if t_restart < t_now < t_start:
-            time.sleep(600)
+            send_message("프로그램을 재시작합니다.")
+            time.sleep(10)
             restart_program()
         for item in order_log:
             stc = order_log[item]
@@ -394,8 +396,8 @@ try:
                 bought_list.remove(sym)
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
-            time.sleep(60)
-            continue
+            time.sleep(1)
+            pass
         if t_9 < t_now < t_start and soldout == False: # 잔여 수량 매도
             for sym, qty in stock_dict.items():
                 qty = qty[0]
@@ -421,7 +423,7 @@ try:
                 bought_list = []
                 time.sleep(1)
         if t_exit < t_now:  # PM 03:20 ~ :프로그램 종료
-            continue
+            pass
 except Exception as e:
-    send_message(f"[오류 발생]{e}")
+    send_message(f"[<@921039947648073788>오류 발생]{e}")
     time.sleep(1)
