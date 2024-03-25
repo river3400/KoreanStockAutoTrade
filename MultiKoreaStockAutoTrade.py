@@ -372,16 +372,8 @@ try:
             send_message("프로그램을 재시작합니다.")
             time.sleep(10)
             restart_program()
-        for item in order_log:
-            stc = order_log[item]
-            if stc[0] < t_now:
-                result = cancel(stc[1])
-                if result:
-                    bought_list.remove(item)
-                to_delete.append(item)
-        for item in to_delete:
-            del order_log[item]
-        for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
+        
+        """for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
             stock_dict = get_stock_balance()
             stock_list = stock_dict.get(sym, ["0","0"])
             rate = float(stock_list[1])
@@ -393,7 +385,7 @@ try:
                 qty = stock_list[0]
                 sell(sym, qty)
                 send_message("%s %s %.2f%%" % (stock_list[2], "익절" if rate>0 else "손절" ,rate))
-                bought_list.remove(sym)
+                bought_list.remove(sym)"""
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
             send_message("주말이므로 프로그램을 종료합니다.")
             time.sleep(1)
@@ -407,6 +399,15 @@ try:
             stock_dict = get_stock_balance_msg()
 
         if t_start < t_now < t_sell :  # AM 09:05 ~ PM 03:15 : 매수
+            for item in order_log:
+                stc = order_log[item]
+                if stc[0] < t_now:
+                    result = cancel(stc[1])
+                    if result:
+                        bought_list.remove(item)
+                    to_delete.append(item)
+            for item in to_delete:
+                del order_log[item]
             parallel_check_buy_conditions(symbol_list, buy_amount, bought_list, buytry_list)
             time.sleep(0.1)
             if t_now.minute > 30 and (last_executed is None or last_executed.hour != t_now.hour): 
