@@ -364,13 +364,13 @@ try:
         t_start = t_now.replace(hour=9, minute=5, second=0, microsecond=0)
         t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
         t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
-        t_restart = t_now.replace(hour=0, minute=1, second=0, microsecond=0)
-        t_start = t_now.replace(hour=0, minute=2, second=0, microsecond=0)
+        t_restart = t_now.replace(hour=8, minute=0, second=0, microsecond=0)
+        t_reset = t_now.replace(hour=8, minute=10, second=0, microsecond=0)
         today = t_now.weekday()
         to_delete = []
-        if t_restart < t_now < t_start:
+        if t_restart < t_now < t_reset:
             send_message("프로그램을 재시작합니다.")
-            time.sleep(10)
+            time.sleep(600)
             restart_program()
         
         """for sym in bought_list: #수익률 2.5, 손해 2.5시 매도
@@ -387,8 +387,7 @@ try:
                 send_message("%s %s %.2f%%" % (stock_list[2], "익절" if rate>0 else "손절" ,rate))
                 bought_list.remove(sym)"""
         if today == 5 or today == 6:  # 토요일이나 일요일이면 자동 종료
-            send_message("주말이므로 프로그램을 종료합니다.")
-            time.sleep(1)
+            time.sleep(3600)
             pass
         if t_9 < t_now < t_start and soldout == False: # 잔여 수량 매도
             for sym, qty in stock_dict.items():
