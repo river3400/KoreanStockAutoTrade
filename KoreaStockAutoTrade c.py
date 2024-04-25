@@ -26,7 +26,7 @@ def send_message(msg):
 
 def get_access_token():
     """토큰 발급"""
-    
+    '''
     headers = {"content-type":"application/json"}
     body = {"grant_type":"client_credentials",
     "appkey":APP_KEY, 
@@ -34,10 +34,13 @@ def get_access_token():
     PATH = "oauth2/tokenP"
     URL = f"{URL_BASE}/{PATH}"
     res = requests.post(URL, headers=headers, data=json.dumps(body))
+    print(res)
     ACCESS_TOKEN = res.json()["access_token"]
     print(ACCESS_TOKEN)
+    '''
     
-    return ACCESS_TOKEN
+    return 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0b2tlbiIsImF1ZCI6ImEzZjg5NDllLWFjMGUtNDY4MC05ZGQyLTc3YTYyNzU2NmNlNCIsImlzcyI6InVub2d3IiwiZXhwIjoxNzExMTg1MDUyLCJpYXQiOjE3MTEwOTg2NTIsImp0aSI6IlBTSG1kTkVlMEpnWTluM0w0OUpVbjRxNERRNVZIaDUwUWM4TSJ9.BdEsb7jiIRbtHb8ix6KVVJ0Z-0Wuq0Ycd0ge5rpIyQh9nhYJCPiiriieFqDvfyBzBSY0D-g4puw3MRklziKvHQ'
+    #return ACCESS_TOKEN
     
 def hashkey(datas):
     """암호화"""
@@ -229,7 +232,7 @@ def buy(code="005930", qty="1", unpr = '0'):
         return res.json()['output']['ODNO']
     else:
         send_message(f"[매수 실패]{str(res.json())}")
-        return False
+        return True
 
 def sell(code="005930", qty="1"):
     """주식 시장가 매도"""
@@ -320,8 +323,8 @@ try:
         t_now = datetime.datetime.now(korea_timezone)
         t_9 = t_now.replace(hour=9, minute=0, second=0, microsecond=0)
         t_start = t_now.replace(hour=9, minute=5, second=0, microsecond=0)
-        t_sell = t_now.replace(hour=15, minute=15, second=0, microsecond=0)
-        t_exit = t_now.replace(hour=15, minute=20, second=0,microsecond=0)
+        t_sell = t_now.replace(hour=20, minute=15, second=0, microsecond=0)
+        t_exit = t_now.replace(hour=20, minute=20, second=0,microsecond=0)
         today = t_now.weekday()
         to_delete = []
         for item in order_log:
@@ -409,6 +412,9 @@ try:
             break
         end_time = time.time()
         print("작업수행시간", end_time - start_time)
+        print(bought_list)
+        print(buytry_list)
+        print(order_log)
 except Exception as e:
     send_message(f"[오류 발생]{e}")
     time.sleep(1)

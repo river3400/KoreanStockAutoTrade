@@ -39,7 +39,7 @@ def get_access_token():
     ACCESS_TOKEN = res.json()["access_token"]
     print(ACCESS_TOKEN)
     '''
-    return 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0b2tlbiIsImF1ZCI6IjJlM2Y5OTE4LTZiOGQtNDg1NS04N2VjLWUyYzJiMWE5MDdiZiIsImlzcyI6InVub2d3IiwiZXhwIjoxNzEwNzY3NjIxLCJpYXQiOjE3MTA2ODEyMjEsImp0aSI6IlBTSG1kTkVlMEpnWTluM0w0OUpVbjRxNERRNVZIaDUwUWM4TSJ9.9w_vr9FiQFO5XYzZZ70F_HNj7kAtTDlvUQwRvFvTQ0QEu8tXJiirFXqNQQ7RKjrayuDSOreNgCfZTxzkJDXjxg'
+    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0b2tlbiIsImF1ZCI6IjVlNDlhYWYzLWYzNzktNDM5OS05ODkwLWE3ZDhlMTdjYzczOCIsImlzcyI6InVub2d3IiwiZXhwIjoxNzEwODI5NDA4LCJpYXQiOjE3MTA3NDMwMDgsImp0aSI6IlBTSG1kTkVlMEpnWTluM0w0OUpVbjRxNERRNVZIaDUwUWM4TSJ9.LphtjyewVV4rb46y6bdGOSoIjEHHqIYxERp1droxKh4lZQ7t-VIWBkSqtQ8Y4P4Dg7JZ0U4VNzSYPv8f_cc8SA"
     #return ACCESS_TOKEN
     
 def hashkey(datas):
@@ -107,7 +107,7 @@ try:
     ACCESS_TOKEN = get_access_token()
 
     send_message("===국내 주식 자동매매 프로그램을 시작합니다===")
-    code = '348370'
+    code = '064800'
     df=get_holcv(code, 100)
     k=0.6
 
