@@ -10,6 +10,7 @@ import numpy as np
 from datetime import timedelta
 import pandas as pd
 from symbols import all_symbol
+from symbols import holidays
 
 dont_sell = ["005930","035420"]
 
@@ -342,7 +343,6 @@ def restart_program():
     print(*sys.argv)
     os.execl(python, python, *sys.argv)
 
-holidays = [datetime.date(2023, 12, 25), datetime.date(2024, 1, 1), datetime.date(2024, 2, 9), datetime.date(2024, 2, 12), datetime.date(2024, 3, 1)]
 
 def minus_business_days(start_date, business_days_to_add, holidays=[]):
     current_date = start_date
@@ -351,6 +351,15 @@ def minus_business_days(start_date, business_days_to_add, holidays=[]):
         if current_date.weekday() < 5 and current_date not in holidays:  # 월요일=0, 일요일=6
             business_days_to_add -= 1
     return current_date
+
+def last_sales_days(holidays=holidays):
+    t_now = datetime.datetime.now()
+    today = t_now.weekday()
+    while(today == 5 or today == 6 or t_now.date() in holidays):
+        today -= 1
+        t_now -= datetime.timedelta(days=1)
+    return t_now.strftime('%Y%m%d')
+        
 
 def get_holcv(code='005930', count='7'):
     """holcv 조회"""
@@ -375,23 +384,54 @@ def get_holcv(code='005930', count='7'):
     }
     res = requests.get(URL, headers=headers, params=params)
     if res.json()['rt_cd'] == '0':
-        
         columns = ['open', 'high', 'low', 'close', 'volume']
         index = []
         rows = []
-        if res.json()['output2'][0] == {} or res.json()['output2'][0]['stck_bsop_date'] <= str_past:
+        if res.json()['output2'][0] == {} or res.json()['output2'][0]['stck_bsop_date'] < last_sales_days():
             return -1
         data_length = min(len(res.json()['output2']), count)
         for i in range(data_length):
             index.insert(0,res.json()['output2'][i]['stck_bsop_date'])
             rows.insert(0,[int(res.json()['output2'][i]['stck_oprc']),int(res.json()['output2'][i]['stck_hgpr']),int(res.json()['output2'][i]['stck_lwpr']),int(res.json()['output2'][i]['stck_clpr']),int(res.json()['output2'][i]['acml_vol'])])
-        df = pd.DataFrame(rows, columns=columns, index=index) 
+        df = pd.DataFrame(rows, columns=columns, index=index)
         return df
     else:
         return -1
+    
+def get_holcv_volume(code='005930', count='7'):
+    """holcv 조회"""
+    time_now = datetime.datetime.now()
+    time_past = time_now - timedelta(days=count)
+    str_today = time_now.strftime('%Y%m%d')
+    str_past = time_past.strftime('%Y%m%d')
+    PATH = "uapi/domestic-stock/v1/quotations/inquire-daily-price"
+    URL = f"{URL_BASE}/{PATH}"
+    headers = {"Content-Type":"application/json", 
+        "authorization": f"Bearer {ACCESS_TOKEN}",
+        "appKey":APP_KEY,
+        "appSecret":APP_SECRET,
+        "tr_id":"FHKST03010100"}
+    params = {
+    "fid_cond_mrkt_div_code":"J",
+    "fid_input_iscd":code,
+    "FID_INPUT_DATE_1":str_past,
+    "FID_INPUT_DATE_2":str_today,
+    "FID_PERIOD_DIV_CODE":"D",
+    "FID_ORG_ADJ_PRC":"0"
+    }
+    res = requests.get(URL, headers=headers, params=params)
+    columns = ['open', 'high', 'low', 'close', 'volume']
+    index = []
+    rows = []
+    data_length = min(len(res.json()['output2']), count)
+    for i in range(data_length):
+        index.insert(0,res.json()['output2'][i]['stck_bsop_date'])
+        rows.insert(0,[int(res.json()['output2'][i]['stck_oprc']),int(res.json()['output2'][i]['stck_hgpr']),int(res.json()['output2'][i]['stck_lwpr']),int(res.json()['output2'][i]['stck_clpr']),int(res.json()['output2'][i]['acml_vol'])])
+    df = pd.DataFrame(rows, columns=columns, index=index) 
+    return df
 
 def get_ror(code = '035420', count = 7, k=0.5):
-    df = get_holcv(code, count)
+    df = get_holcv_volume(code, count)
     df['range'] = (df['high'] - df['low']) * k
 
     df['target'] = df['open'] + df['range'].shift(1)
@@ -435,7 +475,7 @@ def find_volume(all_symbol):
     for sym in all_symbol:
         ror_100 = get_ror(sym, 100)
         ror_30 = get_ror(sym,30)
-        df = get_holcv(sym,1)
+        df = get_holcv_volume(sym,1)
         name = get_name(sym)
         if df['volume'].iloc[0] > 100000 and ror_100 > 1.1 and ror_30 > 1.1:
             found_name.append(name)
@@ -451,6 +491,7 @@ def find_volume(all_symbol):
     '30일수익률':found_hpr_30
     })
     df.to_excel(f"거래량이상종목.xlsx", index=False)
+    send_message("엑셀파일 생성완료")
 
 def read_symbol(file_path):
     df = pd.read_excel(file_path)
@@ -461,7 +502,6 @@ def read_symbol(file_path):
 def able_code(symbol):
     true_code = []
     for sym in symbol:
-        
         df=get_holcv(sym, 5)
         if isinstance(df, int) and df == -1:
             continue
@@ -506,6 +546,7 @@ try:
         if today == 5 or today == 6:  # 주말이 되면 종목찾기
             if new_list:
                 able_symbol = able_code(all_symbol)
+                print(able_symbol)
                 find_volume(able_symbol)
                 new_list = False
             time.sleep(3600)
