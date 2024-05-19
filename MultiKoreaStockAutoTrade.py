@@ -543,7 +543,7 @@ try:
         t_reset = t_now.replace(hour=8, minute=10, second=0, microsecond=0)
         today = t_now.weekday()
         to_delete = []
-        if today == 5 or today == 6:  # 주말이 되면 종목찾기
+        if today == 5 or today == 6 or t_now.date() in holidays:  # 주말이 되면 종목찾기
             if new_list:
                 able_symbol = able_code(all_symbol)
                 print(able_symbol)
